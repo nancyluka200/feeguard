@@ -1,0 +1,8 @@
+{
+  "_note": "ILLUSTRATIVE ASSUMPTIONS. Replace with the real fees you are quoted. FeeGuard only does the arithmetic.",
+  "routes": [
+    { "name": "PayPal balance to local bank", "fee_percent": 0, "fee_fixed": 3.5, "fx_markup_percent": null, "note": "FX markup is taken from the PayPal rate you enter" },
+    { "name": "Multi-currency account (e.g. Wise)", "fee_percent": 0.7, "fee_fixed": 0, "fx_markup_percent": 0, "note": "Mid-market rate, small percentage fee" },
+    { "name": "Mobile money payout (e.g. M-Pesa)", "fee_percent": 1.5, "fee_fixed": 0, "fx_markup_percent": 1.0, "note": "Assumed provider fee and spread" }
+  ]
+}

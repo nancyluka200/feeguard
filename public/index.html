@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FeeGuard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#f5f7fa;--surface:#fff;--ink:#0b1b3b;--muted:#5a6b88;--line:#d9e0ea;--accent:#0070e0;--accent-soft:#e1efff;--fee:#c8420a;--fee-soft:#fde9de;--brand:#003087;
+--display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#00143a;--surface:#0a2352;--ink:#f2f6fc;--muted:#9fb3d1;--line:#1d3a73;--accent:#4da3ff;--accent-soft:#0f2f66;--fee:#ff9a5c;--fee-soft:#3b2412;--brand:#8fc3ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding:24px 16px 48px}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:24px}
+h1{font:700 clamp(28px,6vw,40px)/1.1 var(--display);margin:0;color:var(--brand)}
+h2{font:600 20px var(--display);margin:0 0 8px}
+.muted,.note{color:var(--muted)}.note{font-size:13px}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.badge{font:12px var(--mono);padding:3px 8px;border-radius:4px;background:var(--fee-soft);color:var(--fee)}
+.badge.ok{background:var(--accent-soft);color:var(--accent)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile,.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.tile .k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font:500 24px var(--mono);margin-top:4px;overflow-wrap:anywhere}
+.tile.hot .v{color:var(--fee)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font:500 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.num{text-align:right;font-family:var(--mono)}td.fee{color:var(--fee)}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+button{font:600 15px var(--body);background:var(--accent);color:var(--bg);border:0;border-radius:6px;padding:9px 16px;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+form{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:1fr 100px;gap:10px}
+.msg{font-size:14px;padding:10px 12px;border-radius:8px;background:var(--accent-soft);overflow-wrap:anywhere}
+.msg.err{background:var(--fee-soft);color:var(--fee)}
+.chat{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding:4px 0}
+.b{padding:10px 12px;border-radius:8px;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}
+.b.u{align-self:flex-end;background:var(--accent);color:var(--bg)}
+.b.a{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font:11px var(--mono);background:var(--accent-soft);color:var(--accent);padding:2px 6px;border-radius:4px}
+.ask{display:flex;gap:8px}.ask input{flex:1}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.sugg button{font-size:13px;padding:5px 10px}
+svg text{font:11px var(--mono);fill:var(--muted)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FeeGuard</h1>
+    <p class="muted" style="max-width:62ch;margin:6px 0 0">An agent that reads your PayPal account, finds what each payment really costs, and acts on it: fee-aware pricing, route comparison and sandbox payment links.</p>
+    <div class="badges" id="badges"></div>
+  </header>
+  <div id="gate" class="panel" hidden>
+    <form id="gateForm" style="display:flex;gap:8px;align-items:end">
+      <label style="flex:1">Access code (needed for chat, payments and payouts)<input id="gateIn" type="password" autocomplete="off"></label>
+      <button type="submit">Save</button>
+    </form>
+  </div>
+  <div id="flash"></div>
+
+  <section>
+    <h2>What PayPal is costing you</h2>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <div class="cols">
+    <section class="panel"><h2>Fees by month</h2><div class="scroll" id="chart"></div></section>
+    <section class="panel"><h2>Fees by client</h2><div class="scroll"><table id="clients"></table></div></section>
+  </div>
+
+  <section class="panel">
+    <h2>Ask FeeGuard</h2>
+    <div class="sugg" id="sugg"></div>
+    <div class="chat" id="chat" aria-live="polite"></div>
+    <form class="ask" id="askForm" style="margin-top:10px;display:flex">
+      <input id="askIn" aria-label="Ask a question" placeholder="Which client costs me the most?" autocomplete="off">
+      <button id="askBtn" type="submit">Ask</button>
+    </form>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <h2>Create a sandbox payment</h2>
+      <p class="note">Makes a real PayPal sandbox order. Open the link, pay with a sandbox personal account, and the fee shows up here.</p>
+      <form id="payForm">
+        <div class="row"><label>Amount<input id="payAmt" type="number" step="0.01" min="0.01" value="50"></label>
+        <label>Currency<input id="payCur" value="USD" maxlength="3"></label></div>
+        <label>Description<input id="payDesc" value="Logo design, invoice 014"></label>
+        <button type="submit" id="payBtn">Create payment link</button>
+      </form>
+      <div id="payOut" style="margin-top:10px"></div>
+    </section>
+    <section class="panel">
+      <h2>Send a sandbox payout</h2>
+      <p class="note">Pays a sandbox account by email using the Payouts API.</p>
+      <form id="poForm">
+        <div class="row"><label>Amount<input id="poAmt" type="number" step="0.01" min="0.01" value="10"></label>
+        <label>Currency<input id="poCur" value="USD" maxlength="3"></label></div>
+        <label>Recipient sandbox email<input id="poEmail" type="email" placeholder="buyer@personal.example.com"></label>
+        <button type="submit" id="poBtn" class="ghost">Send payout</button>
+      </form>
+      <div id="poOut" style="margin-top:10px"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Costliest payments</h2>
+    <p class="note">Ranked by fee as a share of the amount. Small payments with the fixed fee come first.</p>
+    <div class="scroll"><table id="costly"></table></div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money=n=>Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const convo=[];
+
+function getCode(){try{return sessionStorage.getItem('fgcode')||''}catch(e){return ''}}
+async function j(url,opts){
+  opts=Object.assign({},opts);const code=getCode();
+  opts.headers=Object.assign({},opts.headers,code?{'x-access-code':code}:{});
+  const r=await fetch(url,opts);const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||('Request failed ('+r.status+')'));return d;
+}
+function msg(el,text,err){el.innerHTML='<div class="msg'+(err?' err':'')+'">'+text+'</div>'}
+
+async function loadStatus(){
+  const s=await j('/api/status');
+  $('gate').hidden=!s.accessRequired;
+  $('badges').innerHTML=
+    '<span class="badge '+(s.paypalConfigured&&!s.demoMode?'ok':'')+'">PayPal: '+(s.paypalConfigured&&!s.demoMode?'sandbox connected':'demo data')+'</span>'+
+    (s.accessRequired?'':'')+
+    '<span class="badge '+(s.ai&&s.ai.configured?'ok':'')+'">AI ('+(s.ai?s.ai.provider:'claude')+'): '+(s.ai&&s.ai.configured?'connected':'no API key')+'</span>';
+}
+
+async function loadSummary(){
+  const d=await j('/api/summary?fresh=1');
+  const s=d.summary,c=s.currency;
+  if(d.warning)msg($('flash'),esc(d.warning),true);
+  $('tiles').innerHTML=
+    tile('Total fees',money(s.total_fees)+' '+c,s.transactions+' transactions',1)+
+    tile('Average fee rate',s.average_fee_rate_percent+'%','of money received',1)+
+    tile('Received',money(s.gross_received)+' '+c,s.payments_received+' payments')+
+    tile('Kept after fees',money(s.kept_after_fees)+' '+c,'before withdrawals')+
+    tile('Withdrawal fees',money(s.withdrawal_fees)+' '+c,s.withdrawals+' withdrawals');
+  drawChart(s.fees_by_month,c);
+  let t='<thead><tr><th>Client</th><th class="num">Paid</th><th class="num">Fees</th><th class="num">Rate</th></tr></thead><tbody>';
+  s.fees_by_client.slice(0,8).forEach(x=>{t+='<tr><td>'+esc(x.name)+'</td><td class="num">'+money(x.gross)+'</td><td class="num fee">'+money(x.fees)+'</td><td class="num">'+x.fee_rate_percent+'%</td></tr>'});
+  $('clients').innerHTML=t+'</tbody>';
+  let u='<thead><tr><th>Date</th><th>From</th><th class="num">Amount</th><th class="num">Fee</th><th class="num">Rate</th></tr></thead><tbody>';
+  d.costliest.forEach(x=>{u+='<tr><td>'+esc(x.date)+'</td><td>'+esc(x.from)+'</td><td class="num">'+money(x.amount)+'</td><td class="num fee">'+money(x.fee)+'</td><td class="num fee">'+x.fee_rate_percent+'%</td></tr>'});
+  $('costly').innerHTML=u+'</tbody>';
+}
+function tile(k,v,s,hot){return '<div class="tile'+(hot?' hot':'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="note">'+s+'</div></div>'}
+
+function drawChart(rows,cur){
+  if(!rows.length){$('chart').innerHTML='<p class="note">No dated transactions yet.</p>';return}
+  const vals=rows.map(r=>r.fees),max=Math.max(...vals)||1;
+  const step=Math.pow(10,Math.floor(Math.log10(max))),top=Math.max(2*step,Math.ceil(max/step)*step);
+  const W=Math.max(300,rows.length*64+56),H=210,pl=40,pb=26,pt=16,iw=W-pl-10,ih=H-pb-pt;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="Fees per month in '+cur+'">';
+  for(let g=0;g<=4;g++){const v=top*g/4,y=pt+ih-(v/top)*ih;
+    s+='<line x1="'+pl+'" x2="'+(W-10)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end">'+Math.round(v)+'</text>'}
+  const bw=Math.min(36,iw/rows.length*.6);
+  rows.forEach((r,i)=>{const cx=pl+iw*(i+.5)/rows.length,h=(r.fees/top)*ih,y=pt+ih-h;
+    s+='<rect x="'+(cx-bw/2)+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="2" fill="var(--fee)"/>'+
+       '<text x="'+cx+'" y="'+(y-4)+'" text-anchor="middle" style="fill:var(--ink)">'+r.fees.toFixed(0)+'</text>'+
+       '<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle">'+r.month.slice(2)+'</text>'});
+  $('chart').innerHTML=s+'</svg>';
+}
+
+// Chat
+function addBubble(role,text,tools){
+  const d=document.createElement('div');d.className='b '+(role==='user'?'u':'a');
+  d.textContent=text;
+  if(tools&&tools.length){const c=document.createElement('div');c.className='chips';
+    tools.forEach(t=>{const s=document.createElement('span');s.className='chip';s.textContent=t.name;s.title=JSON.stringify(t.input);c.appendChild(s)});d.appendChild(c)}
+  $('chat').appendChild(d);$('chat').scrollTop=$('chat').scrollHeight;return d;
+}
+async function ask(text){
+  if(!text.trim())return;
+  addBubble('user',text);convo.push({role:'user',content:text});
+  $('askBtn').disabled=true;const wait=addBubble('assistant','Checking your PayPal data...');
+  try{
+    const out=await j('/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:convo})});
+    wait.remove();addBubble('assistant',out.reply,out.tools);convo.push({role:'assistant',content:out.reply});
+    if(out.tools.some(t=>t.name==='create_payment_link'))loadSummary();
+  }catch(e){wait.remove();convo.pop();addBubble('assistant',e.message)}
+  $('askBtn').disabled=false;
+}
+$('askForm').addEventListener('submit',e=>{e.preventDefault();const v=$('askIn').value;$('askIn').value='';ask(v)});
+['Which client costs me the most in fees?','What should I charge so I keep $100 after fees?','I withdraw $500 and PayPal gives 125.5 KES per USD, market is 129. Compare my options.','Create a payment link for $75 for a website fix'].forEach(q=>{
+  const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent=q.length>40?q.slice(0,38)+'...':q;b.title=q;
+  b.addEventListener('click',()=>ask(q));$('sugg').appendChild(b)});
+
+// Payment + payout
+$('payForm').addEventListener('submit',async e=>{
+  e.preventDefault();$('payBtn').disabled=true;
+  try{const d=await j('/api/payment-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:$('payAmt').value,currency:$('payCur').value,description:$('payDesc').value})});
+    msg($('payOut'),'Order '+esc(d.order_id)+' created. <a href="'+esc(d.pay_url)+'" target="_blank" rel="noopener">Open PayPal sandbox checkout</a>')}
+  catch(err){msg($('payOut'),esc(err.message),true)}
+  $('payBtn').disabled=false;
+});
+$('poForm').addEventListener('submit',async e=>{
+  e.preventDefault();$('poBtn').disabled=true;
+  try{const d=await j('/api/payout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('poEmail').value,amount:$('poAmt').value,currency:$('poCur').value})});
+    msg($('poOut'),'Payout batch '+esc(d.batchId)+': '+esc(d.status))}
+  catch(err){msg($('poOut'),esc(err.message),true)}
+  $('poBtn').disabled=false;
+});
+
+$('gateForm').addEventListener('submit',e=>{e.preventDefault();
+  try{sessionStorage.setItem('fgcode',$('gateIn').value)}catch(err){}
+  msg($('flash'),'Access code saved for this tab.')});
+
+// Return from PayPal checkout
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('paid'))msg($('flash'),'Payment captured. Gross '+esc(p.get('gross'))+' '+esc(p.get('cur'))+', PayPal fee '+esc(p.get('fee'))+', you keep '+esc(p.get('net'))+'.');
+  else if(p.get('error'))msg($('flash'),esc(p.get('error')),true);
+  else if(p.get('cancelled'))msg($('flash'),'Checkout cancelled.');
+  if(location.search)history.replaceState(null,'',location.pathname);
+})();
+
+loadStatus().catch(()=>{});loadSummary().catch(e=>msg($('flash'),esc(e.message),true));
+</script>
+</body>
+</html>

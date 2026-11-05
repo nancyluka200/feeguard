@@ -1,0 +1,19 @@
+# Secrets: never commit these
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# FeeGuard's saved test payments (check the actual file name store.js writes to)
+data/
+store.json
+payments.json
+
+# Helper and logs
+check.js
+*.log
+.DS_Store
+cleanup.js
+*.bak-*
