@@ -112,6 +112,12 @@ a{color:var(--accent)}
     </section>
   </div>
 
+  <section class="panel" id="alertsPanel" hidden>
+    <h2>Fee alerts</h2>
+    <p class="note">Signals to review, not proof of a problem.</p>
+    <div id="alerts"></div>
+  </section>
+
   <section class="panel">
     <h2>Costliest payments</h2>
     <p class="note">Ranked by fee as a share of the amount. Small payments with the fixed fee come first.</p>
@@ -160,6 +166,14 @@ async function loadSummary(){
   let u='<thead><tr><th>Date</th><th>From</th><th class="num">Amount</th><th class="num">Fee</th><th class="num">Rate</th></tr></thead><tbody>';
   d.costliest.forEach(x=>{u+='<tr><td>'+esc(x.date)+'</td><td>'+esc(x.from)+'</td><td class="num">'+money(x.amount)+'</td><td class="num fee">'+money(x.fee)+'</td><td class="num fee">'+x.fee_rate_percent+'%</td></tr>'});
   $('costly').innerHTML=u+'</tbody>';
+  try{renderAlerts(d.alerts)}catch(e){}
+}
+function renderAlerts(a){
+  const p=$('alertsPanel');
+  if(!a||!Array.isArray(a.alerts)){p.hidden=true;return}
+  p.hidden=false;
+  if(!a.alerts.length){$('alerts').innerHTML='<p class="note">'+esc(a.summary||'No unusual fee patterns found.')+'</p>';return}
+  $('alerts').innerHTML=a.alerts.slice(0,6).map(x=>'<div class="msg'+(x.severity==='high'?' err':'')+'" style="margin-bottom:8px"><b>'+esc(x.severity)+'</b> '+(x.date?esc(x.date)+' ':'')+esc(x.message)+'</div>').join('');
 }
 function tile(k,v,s,hot){return '<div class="tile'+(hot?' hot':'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="note">'+s+'</div></div>'}
 
@@ -199,7 +213,7 @@ async function ask(text){
   $('askBtn').disabled=false;
 }
 $('askForm').addEventListener('submit',e=>{e.preventDefault();const v=$('askIn').value;$('askIn').value='';ask(v)});
-['Which client costs me the most in fees?','What should I charge so I keep $100 after fees?','I withdraw $500 and PayPal gives 125.5 KES per USD, market is 129. Compare my options.','Create a payment link for $75 for a website fix'].forEach(q=>{
+['Which client costs me the most in fees?','What should I charge so I keep $100 after fees?','I withdraw $500 and PayPal gives 125.5 KES per USD, market is 129. Compare my options.','Create a payment link for $75 for a website fix','Are there any unusual fees in my account?'].forEach(q=>{
   const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent=q.length>40?q.slice(0,38)+'...':q;b.title=q;
   b.addEventListener('click',()=>ask(q));$('sugg').appendChild(b)});
 

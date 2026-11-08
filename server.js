@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const paypal = require('./lib/paypal');
 const analysis = require('./lib/analysis');
+const anomalies = require('./lib/anomalies');
 const { runAgent, provider, aiConfigured } = require('./lib/agent');
 const { createGuard } = require('./lib/guard');
 const store = require('./lib/store');
@@ -20,6 +21,9 @@ function createApp() {
   const baseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
   const fees = () => ({ percent: Number(process.env.FEE_PERCENT || 4.4), fixed: Number(process.env.FEE_FIXED || 0.3) });
   const useDemo = () => process.env.DEMO_MODE === '1' || !paypal.configured();
+
+  // Optional extra for the dashboard. A problem here never affects the existing numbers.
+  const alertsFor = txns => { try { return anomalies.detectAnomalies(txns, { feeFixed: fees().fixed }); } catch (e) { return null; } };
 
   let cache = { at: 0, value: null };
 
@@ -83,7 +87,8 @@ function createApp() {
       res.json({
         source: data.source, warning: data.warning,
         summary: analysis.summarize(data.transactions, { days }),
-        costliest: analysis.costliestPayments(data.transactions, { limit: 20 })
+        costliest: analysis.costliestPayments(data.transactions, { limit: 20 }),
+        alerts: alertsFor(data.transactions)
       });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
